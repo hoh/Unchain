@@ -1,8 +1,11 @@
 """
-Publish real-time information to your clients via websocket given their
-permissions set in Django.
+Unchain your HTTP backend with authenticated WebSockets.
 
-Named after Dr. King Schultz, the companion of Django in Django Unchained.
+Publish real-time information to your clients via websocket given their
+permissions set in Django/other HTTP framework.
+
+* Subscribe via WebSocket on `ws://host/ws`
+* Publish JSON via POST on `http://host/publish`
 """
 
 import sys
@@ -15,6 +18,7 @@ from collections import defaultdict
 from pprint import pprint
 
 TOKEN = lambda request: request.cookies.get('sessionid_railfleet')
+BACKEND = "'http://localhost:8000/whitelist.json?token={}"
 
 # Identity -> {Topics, Websockets}
 subscriptions = defaultdict(dict)
@@ -23,8 +27,7 @@ subscriptions = defaultdict(dict)
 @asyncio.coroutine
 def get_identity_whitelist(token):
     """Get identity and whitelist for token from backend."""
-    response_raw = yield from aiohttp.get(
-        'http://localhost:8000/whitelist.json?token={}'.format(token))
+    response_raw = yield from aiohttp.get(BACKEND.format(token))
 
     response = yield from response_raw.json()
     identity = response['identity']
@@ -34,6 +37,8 @@ def get_identity_whitelist(token):
 
 @asyncio.coroutine
 def register_ws(ws, token):
+    """Register a WebSocket connection given an authentication
+    token/session id."""
     global subscriptions
 
     identity, whitelist = yield from get_identity_whitelist(token)
@@ -52,10 +57,12 @@ def register_ws(ws, token):
 
 
 def unregister_ws(identity, ws):
+    """Remove the reference to a (closed) WebSocket connection."""
     del subscriptions[identity]['connections'][ws]
 
 
 def subscribe_to_topics(identity, ws, topics):
+    """Subscribe the given WebSocket to a set of topics."""
     global subscriptions
     subscriptions[identity]['connections'][ws].update(topics)
     print()
@@ -64,12 +71,14 @@ def subscribe_to_topics(identity, ws, topics):
 
 @asyncio.coroutine
 def index_handler(request):
+    """Example index page for demo/testing."""
     text = open('drking/index.html', 'r').read()
     return web.Response(body=text.encode('utf-8'))
 
 
 @asyncio.coroutine
 def publish_handler(request, loader=json.loads):
+    """Publish POSTed data to subscribed WebSocket subscribers."""
     global subscriptions
     # data = yield from request.post()
     # print('data', data)
@@ -91,6 +100,7 @@ def publish_handler(request, loader=json.loads):
 
 @asyncio.coroutine
 def websocket_handler(request):
+    """Register a WebSocket connection and handle subscription to topics."""
     ws = web.WebSocketResponse()
     yield from ws.prepare(request)
 
