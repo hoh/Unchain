@@ -8,6 +8,7 @@ permissions set in Django/other HTTP framework.
 * Publish JSON via POST on `http://host/publish`
 """
 
+import os.path
 import sys
 import json
 import asyncio
@@ -18,7 +19,7 @@ from collections import defaultdict
 from pprint import pprint
 
 TOKEN = lambda request: request.cookies.get('sessionid_railfleet')
-BACKEND = "'http://localhost:8000/whitelist.json?token={}"
+BACKEND = "'http://localhost:9000/whitelist.json?token={}"
 
 # Identity -> {Topics, Websockets}
 subscriptions = defaultdict(dict)
@@ -27,7 +28,9 @@ subscriptions = defaultdict(dict)
 @asyncio.coroutine
 def get_identity_whitelist(token):
     """Get identity and whitelist for token from backend."""
-    response_raw = yield from aiohttp.get(BACKEND.format(token))
+    url = BACKEND.format(token)
+    print('URL=', url)
+    response_raw = yield from aiohttp.get(url)
 
     response = yield from response_raw.json()
     identity = response['identity']
@@ -72,7 +75,8 @@ def subscribe_to_topics(identity, ws, topics):
 @asyncio.coroutine
 def index_handler(request):
     """Example index page for demo/testing."""
-    text = open('drking/index.html', 'r').read()
+    index_path = os.path.join(os.path.dirname(__file__), 'index.html')
+    text = open(index_path, 'r').read()
     return web.Response(body=text.encode('utf-8'))
 
 
@@ -143,8 +147,8 @@ def init(loop):
     app.router.add_route('GET', '/ws', websocket_handler)
 
     srv = yield from loop.create_server(app.make_handler(),
-                                        '', 8089)
-    print("Server started at http://127.0.0.1:8089")
+                                        '', 8090)
+    print("Server started at http://127.0.0.1:8090")
     return srv
 
 loop = asyncio.get_event_loop()
