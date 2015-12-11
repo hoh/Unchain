@@ -51,6 +51,10 @@ def register_ws(ws, token):
     return identity
 
 
+def unregister_ws(identity, ws):
+    del subscriptions[identity]['connections'][ws]
+
+
 def subscribe_to_topics(identity, ws, topics):
     global subscriptions
     subscriptions[identity]['connections'][ws].update(topics)
@@ -97,11 +101,21 @@ def websocket_handler(request):
 
     while True:
         try:
-            msg_raw = yield from ws.receive()
-            print('got msg_raw:', msg_raw)
-            msg = json.loads(msg_raw.data)
-            print('got msg:', msg)
-            subscribe_to_topics(identity, ws, msg['topics'])
+            msg = yield from ws.receive()
+
+            if msg.tp == aiohttp.MsgType.text:
+                topics = json.loads(msg.data)['topics']
+                subscribe_to_topics(identity, ws, topics)
+
+            elif msg.tp == aiohttp.MsgType.close:
+                print('websocket connection closed')
+                unregister_ws(identity, ws)
+                break
+            elif msg.tp == aiohttp.MsgType.error:
+                print('ws connection closed with exception %s',
+                      aio.ws.exception())
+                unregister_ws(identity, ws)
+                break
 
         except RuntimeError:
             # clients.remove(ws)
