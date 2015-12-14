@@ -19,7 +19,7 @@ from collections import defaultdict
 from pprint import pprint
 
 TOKEN = lambda request: request.cookies.get('sessionid_railfleet')
-BACKEND = "'http://localhost:9000/whitelist.json?token={}"
+BACKEND = "http://127.0.0.1:9000/whitelist.json?token={}"
 
 # Identity -> {Topics, Websockets}
 subscriptions = defaultdict(dict)
