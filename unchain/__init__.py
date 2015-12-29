@@ -150,10 +150,3 @@ def init(loop):
                                         '', 8090)
     print("Server started at http://127.0.0.1:8090")
     return srv
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(init(loop))
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
